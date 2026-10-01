@@ -1,0 +1,16 @@
+id,startTime,duration,endTime,totalPausedTime,completed,stopped,type,notes,tags
+s1,2026-09-01T09:00:00+02:00,1500,2026-09-01T09:30:00+02:00,300,true,false,work,Factor model,"python,quant"
+s2,2026-09-01T09:30:00+02:00,300,2026-09-01T09:35:00+02:00,0,true,false,break,,
+s3,2026-09-01T10:00:00Z,2700,2026-09-01T10:45:00Z,0,false,true,focus,"Notes, with comma",#german #vocab
+s1,2026-09-01T09:00:00+02:00,1500,2026-09-01T09:30:00+02:00,300,true,false,work,Factor model,"python,quant"
+s5,2026-09-02 08:00:00,3000,,600,true,false,work,naive time and derived end,
+s6,not-a-date,1500,2026-09-02T10:00:00Z,0,true,false,work,,
+s7,2026-09-02T11:00:00Z,1500,2026-09-02T10:00:00Z,0,true,false,work,end before start,
+s8,2026-09-02T12:00:00Z,,2026-09-02T12:50:00Z,,false,false,,missing duration paused and type,
+s9,2026-09-03T08:00:00Z,72000,2026-09-04T04:00:00Z,0,false,false,work,forgot to stop the timer,
+s10,2026-09-03T09:00:00Z,1800,2026-09-03T09:30:00Z,0,yes,no,meditation,,
+s11,2026-09-03T10:00:00Z,1800,2026-09-03T10:30:00Z,0,true,false,work,extra,field,here
+s12,2026-09-03T13:00:00Z,1800,2026-09-03T16:00:00Z,9000,true,false,work,long pause,
+s13,2026-09-03T17:00:00.000Z,1500,2026-09-03T17:25:30.000Z,,true,false,work,millisecond precision,
+s14,1756890000,1500,1756891500,0,true,false,work,epoch seconds,
+s15,2026-09-01T10:00:00Z,2700,2026-09-01T10:45:00Z,0,false,true,work,same session exported twice,german
