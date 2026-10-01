@@ -29,9 +29,19 @@ def list_sessions(
     offset: int = Query(0, ge=0),
 ):
     items, total = sessions.list_sessions(
-        db, settings, date_from=date_from, date_to=date_to, type_=type, task_id=task_id,
-        project_id=project_id, tag=tag, q=q, source=source, include_excluded=include_excluded,
-        limit=limit, offset=offset,
+        db,
+        settings,
+        date_from=date_from,
+        date_to=date_to,
+        type_=type,
+        task_id=task_id,
+        project_id=project_id,
+        tag=tag,
+        q=q,
+        source=source,
+        include_excluded=include_excluded,
+        limit=limit,
+        offset=offset,
     )
     return {"items": items, "total": total}
 

@@ -1,10 +1,10 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import AwareDatetime, BaseModel, Field
+from pydantic import BaseModel, Field
 
 from app.models.enums import Energy, Priority, TaskSource, TaskStatus, TimeOfDay
-from app.schemas.common import ORMModel, Tags
+from app.schemas.common import ORMModel, Tags, UTCDatetime
 
 
 class DependencyIn(BaseModel):
@@ -22,8 +22,8 @@ class _TaskFields(BaseModel):
     project_id: uuid.UUID | None = None
     category: str | None = Field(None, max_length=100)
     estimated_minutes: int | None = Field(None, gt=0, le=10000)
-    deadline: AwareDatetime | None = None
-    earliest_start: AwareDatetime | None = None
+    deadline: UTCDatetime | None = None
+    earliest_start: UTCDatetime | None = None
     planned_date: date | None = None
     preferred_time: TimeOfDay | None = None
     energy_requirement: Energy | None = None

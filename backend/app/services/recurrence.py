@@ -108,7 +108,10 @@ def generate_occurrences(
     if created:
         db.flush()
         audit.record(
-            db, action="recurrence.generated", source=ActionSource.system, entity_type="task",
+            db,
+            action="recurrence.generated",
+            source=ActionSource.system,
+            entity_type="task",
             after={"count": len(created), "start": start, "end": end},
         )
     if commit:

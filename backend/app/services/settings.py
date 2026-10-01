@@ -28,13 +28,17 @@ def get_settings(db: Session) -> UserSettings:
     return UserSettings.model_validate(data)
 
 
-def update_settings(db: Session, patch: dict[str, Any], source: ActionSource = ActionSource.user) -> UserSettings:
+def update_settings(
+    db: Session, patch: dict[str, Any], source: ActionSource = ActionSource.user
+) -> UserSettings:
     current = get_settings(db)
     merged = _deep_merge(current.model_dump(mode="json"), patch)
     try:
         updated = UserSettings.model_validate(merged)
     except ValidationError as exc:
-        raise ValidationFailed("invalid settings", details=exc.errors(include_url=False, include_context=False))
+        raise ValidationFailed(
+            "invalid settings", details=exc.errors(include_url=False, include_context=False)
+        ) from exc
     row = db.get(AppSettings, 1)
     data = updated.model_dump(mode="json")
     if row is None:
@@ -44,8 +48,13 @@ def update_settings(db: Session, patch: dict[str, Any], source: ActionSource = A
     before, after = audit.diff(current.model_dump(mode="json"), data)
     if after:
         audit.record(
-            db, action="settings.updated", source=source, entity_type="settings", entity_id=1,
-            before=before, after=after,
+            db,
+            action="settings.updated",
+            source=source,
+            entity_type="settings",
+            entity_id=1,
+            before=before,
+            after=after,
         )
     db.commit()
     return updated

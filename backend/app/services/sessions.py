@@ -58,7 +58,10 @@ def list_sessions(
     if q:
         like = f"%{q.lower()}%"
         stmt = stmt.where(
-            or_(func.lower(FocusSession.notes).like(like), func.lower(FocusSession.task_title_snapshot).like(like))
+            or_(
+                func.lower(FocusSession.notes).like(like),
+                func.lower(FocusSession.task_title_snapshot).like(like),
+            )
         )
     stmt = stmt.order_by(FocusSession.start_time.desc())
     if tag:
@@ -82,7 +85,10 @@ def _overlapping(db: Session, start: datetime, end: datetime) -> FocusSession | 
 
 
 def create_manual(
-    db: Session, data: ManualSessionCreate, now: datetime, settings: UserSettings,
+    db: Session,
+    data: ManualSessionCreate,
+    now: datetime,
+    settings: UserSettings,
     source: ActionSource = ActionSource.user,
 ) -> FocusSession:
     if data.end_time > now:
@@ -119,8 +125,14 @@ def create_manual(
     )
     db.add(session)
     db.flush()
-    audit.record(db, action="session.logged", source=source, entity_type="focus_session",
-                 entity_id=session.id, after=audit.snapshot(session))
+    audit.record(
+        db,
+        action="session.logged",
+        source=source,
+        entity_type="focus_session",
+        entity_id=session.id,
+        after=audit.snapshot(session),
+    )
     db.commit()
     return session
 
@@ -163,8 +175,15 @@ def annotate(
     db.flush()
     b, a = audit.diff(before, audit.snapshot(session))
     if a:
-        audit.record(db, action="session.annotated", source=source, entity_type="focus_session",
-                     entity_id=session.id, before=b, after=a)
+        audit.record(
+            db,
+            action="session.annotated",
+            source=source,
+            entity_type="focus_session",
+            entity_id=session.id,
+            before=b,
+            after=a,
+        )
     db.commit()
     return session
 
@@ -177,6 +196,13 @@ def void(db: Session, session_id: uuid.UUID, now: datetime, source: ActionSource
         return
     before = audit.snapshot(session)
     session.voided_at = now
-    audit.record(db, action="session.voided", source=source, entity_type="focus_session",
-                 entity_id=session.id, before=before, after={"voided_at": now})
+    audit.record(
+        db,
+        action="session.voided",
+        source=source,
+        entity_type="focus_session",
+        entity_id=session.id,
+        before=before,
+        after={"voided_at": now},
+    )
     db.commit()

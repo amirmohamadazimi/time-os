@@ -21,7 +21,9 @@ class FocusSession(UUIDPk, Timestamps, Base):
     task_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid, ForeignKey("tasks.id", ondelete="SET NULL"), index=True
     )
-    type: Mapped[SessionType] = mapped_column(enum_type(SessionType, "session_type"), default=SessionType.work)
+    type: Mapped[SessionType] = mapped_column(
+        enum_type(SessionType, "session_type"), default=SessionType.work
+    )
     state: Mapped[SessionState] = mapped_column(enum_type(SessionState, "session_state"), index=True)
     source: Mapped[SessionSource] = mapped_column(enum_type(SessionSource, "session_source"))
 

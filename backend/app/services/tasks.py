@@ -67,7 +67,11 @@ def list_tasks(
         like = f"%{q.lower()}%"
         stmt = stmt.where(or_(func.lower(Task.title).like(like), func.lower(Task.description).like(like)))
     stmt = stmt.order_by(
-        Task.deadline.is_(None), Task.deadline, Task.planned_date.is_(None), Task.planned_date, Task.created_at
+        Task.deadline.is_(None),
+        Task.deadline,
+        Task.planned_date.is_(None),
+        Task.planned_date,
+        Task.created_at,
     )
     tasks = list(db.scalars(stmt).unique())
     if tag:
@@ -142,7 +146,8 @@ def _set_dependencies(db: Session, task: Task, deps: list[DependencyIn]) -> None
         if _would_cycle(db, task.id, list(by_id)):
             raise ValidationFailed("dependencies would create a cycle")
     task.dependencies = [
-        TaskDependency(task_id=task.id, depends_on_id=dep_id, strict=strict) for dep_id, strict in by_id.items()
+        TaskDependency(task_id=task.id, depends_on_id=dep_id, strict=strict)
+        for dep_id, strict in by_id.items()
     ]
 
 
@@ -195,8 +200,13 @@ def create_task(
     _set_dependencies(db, task, data.dependencies)
     db.flush()
     audit.record(
-        db, action="task.created", source=source, entity_type="task", entity_id=task.id,
-        after=_snapshot(task), reason=reason,
+        db,
+        action="task.created",
+        source=source,
+        entity_type="task",
+        entity_id=task.id,
+        after=_snapshot(task),
+        reason=reason,
     )
     if commit:
         db.commit()
@@ -236,14 +246,26 @@ def update_task(
     db.flush()
     b, a = audit.diff(before, _snapshot(task))
     if a:
-        audit.record(db, action="task.updated", source=source, entity_type="task", entity_id=task.id,
-                     before=b, after=a, reason=reason)
+        audit.record(
+            db,
+            action="task.updated",
+            source=source,
+            entity_type="task",
+            entity_id=task.id,
+            before=b,
+            after=a,
+            reason=reason,
+        )
     db.commit()
     return task
 
 
 def complete_task(
-    db: Session, task_id: uuid.UUID, now: datetime, *, source: ActionSource = ActionSource.user,
+    db: Session,
+    task_id: uuid.UUID,
+    now: datetime,
+    *,
+    source: ActionSource = ActionSource.user,
     commit: bool = True,
 ) -> Task:
     task = get_task(db, task_id)
@@ -253,8 +275,15 @@ def complete_task(
         return task
     before = task.status
     _apply_status(task, TaskStatus.completed, now)
-    audit.record(db, action="task.completed", source=source, entity_type="task", entity_id=task.id,
-                 before={"status": before}, after={"status": task.status, "completed_at": now})
+    audit.record(
+        db,
+        action="task.completed",
+        source=source,
+        entity_type="task",
+        entity_id=task.id,
+        before={"status": before},
+        after={"status": task.status, "completed_at": now},
+    )
     if commit:
         db.commit()
     return task
@@ -265,8 +294,15 @@ def approve_task(db: Session, task_id: uuid.UUID, *, source: ActionSource = Acti
     if not task.pending_approval:
         return task
     task.pending_approval = False
-    audit.record(db, action="task.approved", source=source, entity_type="task", entity_id=task.id,
-                 before={"pending_approval": True}, after={"pending_approval": False})
+    audit.record(
+        db,
+        action="task.approved",
+        source=source,
+        entity_type="task",
+        entity_id=task.id,
+        before={"pending_approval": True},
+        after={"pending_approval": False},
+    )
     db.commit()
     return task
 
@@ -282,13 +318,22 @@ def delete_task(
             if occ.status in RESOLVED_STATUSES:
                 occ.recurrence_parent_id = None
         db.flush()
-    audit.record(db, action="task.deleted", source=source, entity_type="task", entity_id=task.id,
-                 before=snap, reason=reason)
+    audit.record(
+        db,
+        action="task.deleted",
+        source=source,
+        entity_type="task",
+        entity_id=task.id,
+        before=snap,
+        reason=reason,
+    )
     db.delete(task)
     db.commit()
 
 
-def capture_inbox(db: Session, text: str, now: datetime, *, source: ActionSource = ActionSource.user) -> list[Task]:
+def capture_inbox(
+    db: Session, text: str, now: datetime, *, source: ActionSource = ActionSource.user
+) -> list[Task]:
     titles = [_BULLET.sub("", line).strip() for line in text.splitlines()]
     titles = [t[:500] for t in titles if t]
     if not titles:
@@ -306,14 +351,23 @@ def mark_in_progress(db: Session, task: Task, *, source: ActionSource) -> None:
     if task.status in (TaskStatus.inbox, TaskStatus.planned, TaskStatus.blocked):
         before = task.status
         task.status = TaskStatus.in_progress
-        audit.record(db, action="task.started", source=source, entity_type="task", entity_id=task.id,
-                     before={"status": before}, after={"status": task.status})
+        audit.record(
+            db,
+            action="task.started",
+            source=source,
+            entity_type="task",
+            entity_id=task.id,
+            before={"status": before},
+            after={"status": task.status},
+        )
 
 
 # ---------------------------------------------------------------- read models
 
 
-def unresolved_strict_prerequisites(db: Session, task_ids: list[uuid.UUID]) -> dict[uuid.UUID, list[uuid.UUID]]:
+def unresolved_strict_prerequisites(
+    db: Session, task_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, list[uuid.UUID]]:
     if not task_ids:
         return {}
     rows = db.execute(

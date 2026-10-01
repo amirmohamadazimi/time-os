@@ -2,10 +2,10 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from app.models.enums import EndReason, Outcome, SessionSource, SessionState, SessionType
-from app.schemas.common import ORMModel, Tags
+from app.schemas.common import ORMModel, Tags, UTCDatetime
 
 
 class FocusStart(BaseModel):
@@ -38,8 +38,8 @@ class FocusAnnotate(BaseModel):
 class ManualSessionCreate(BaseModel):
     task_id: uuid.UUID | None = None
     type: SessionType = SessionType.work
-    start_time: AwareDatetime
-    end_time: AwareDatetime
+    start_time: UTCDatetime
+    end_time: UTCDatetime
     paused_duration_s: int = Field(0, ge=0)
     end_reason: EndReason = EndReason.completed
     outcome: Outcome | None = None

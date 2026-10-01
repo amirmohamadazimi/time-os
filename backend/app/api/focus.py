@@ -2,7 +2,14 @@ from fastapi import APIRouter, status
 
 from app.api.deps import DB, Now, Settings
 from app.models import FocusSession
-from app.schemas.focus import FocusAnnotate, FocusFinish, FocusSessionOut, FocusStart, FocusSwitch, LiveSessionOut
+from app.schemas.focus import (
+    FocusAnnotate,
+    FocusFinish,
+    FocusSessionOut,
+    FocusStart,
+    FocusSwitch,
+    LiveSessionOut,
+)
 from app.services import focus
 
 router = APIRouter(prefix="/focus", tags=["focus"])

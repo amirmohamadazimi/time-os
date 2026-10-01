@@ -1,6 +1,7 @@
+from datetime import UTC, datetime
 from typing import Annotated, Any, Generic, TypeVar
 
-from pydantic import AfterValidator, BaseModel, ConfigDict
+from pydantic import AfterValidator, AwareDatetime, BaseModel, ConfigDict
 
 MAX_TAGS = 30
 MAX_TAG_LEN = 50
@@ -27,6 +28,14 @@ def normalize_tags(tags: list[str] | None) -> list[str]:
 
 
 Tags = Annotated[list[str], AfterValidator(normalize_tags)]
+
+
+def _to_utc(value: datetime) -> datetime:
+    return value.astimezone(UTC)
+
+
+# Request timestamps must carry an offset (naive values are rejected) and are normalised to UTC.
+UTCDatetime = Annotated[AwareDatetime, AfterValidator(_to_utc)]
 
 
 class ORMModel(BaseModel):

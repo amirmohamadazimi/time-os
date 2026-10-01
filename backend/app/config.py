@@ -16,7 +16,9 @@ class Config(BaseSettings):
     database_url: str = "sqlite:///./data/timeos.db"
     auto_migrate: bool = True
     api_token: str | None = None
-    cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"])
+    cors_origins: list[str] = Field(
+        default_factory=lambda: ["http://localhost:5173", "http://127.0.0.1:5173"]
+    )
     default_timezone: str = "UTC"
     max_upload_mb: int = 20
 

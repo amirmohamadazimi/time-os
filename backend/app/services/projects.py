@@ -7,7 +7,14 @@ from sqlalchemy.orm import Session
 
 from app.errors import ConflictError, NotFoundError
 from app.models import FocusSession, Project, Task
-from app.models.enums import OPEN_TASK_STATUSES, ActionSource, ProjectStatus, SessionState, SessionType, TaskStatus
+from app.models.enums import (
+    OPEN_TASK_STATUSES,
+    ActionSource,
+    ProjectStatus,
+    SessionState,
+    SessionType,
+    TaskStatus,
+)
 from app.schemas.project import ProjectCreate, ProjectStats, ProjectUpdate
 from app.services import audit
 
@@ -41,7 +48,11 @@ def create_project(db: Session, data: ProjectCreate, source: ActionSource = Acti
     db.add(project)
     db.flush()
     audit.record(
-        db, action="project.created", source=source, entity_type="project", entity_id=project.id,
+        db,
+        action="project.created",
+        source=source,
+        entity_type="project",
+        entity_id=project.id,
         after=audit.snapshot(project),
     )
     _commit_unique(db, project.name)
@@ -72,8 +83,15 @@ def update_project(
     db.flush()
     b, a = audit.diff(before, audit.snapshot(project))
     if a:
-        audit.record(db, action="project.updated", source=source, entity_type="project", entity_id=project.id,
-                     before=b, after=a)
+        audit.record(
+            db,
+            action="project.updated",
+            source=source,
+            entity_type="project",
+            entity_id=project.id,
+            before=b,
+            after=a,
+        )
     _commit_unique(db, project.name)
     return project
 
@@ -89,8 +107,14 @@ def delete_project(db: Session, project_id: uuid.UUID, source: ActionSource = Ac
             "project has tasks or focus history; archive it instead to keep analytics intact",
             details={"tasks": tasks, "sessions": sessions},
         )
-    audit.record(db, action="project.deleted", source=source, entity_type="project", entity_id=project.id,
-                 before=audit.snapshot(project))
+    audit.record(
+        db,
+        action="project.deleted",
+        source=source,
+        entity_type="project",
+        entity_id=project.id,
+        before=audit.snapshot(project),
+    )
     db.delete(project)
     db.commit()
 
@@ -110,7 +134,9 @@ def project_stats(db: Session, project_id: uuid.UUID) -> ProjectStats:
         )
     ).one()
     completed = db.scalar(
-        select(func.count()).select_from(Task).where(
+        select(func.count())
+        .select_from(Task)
+        .where(
             Task.project_id == project_id, Task.status == TaskStatus.completed, Task.recurrence_rule.is_(None)
         )
     )

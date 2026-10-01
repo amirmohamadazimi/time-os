@@ -2,10 +2,10 @@ import uuid
 from datetime import date
 
 from fastapi import APIRouter, Query, status
-from pydantic import AwareDatetime
 
 from app.api.deps import DB, Now, Settings
 from app.models.enums import TaskStatus
+from app.schemas.common import UTCDatetime
 from app.schemas.focus import FocusSessionOut
 from app.schemas.task import InboxCapture, RecurrenceWindow, TaskCreate, TaskOut, TaskUpdate
 from app.services import recurrence, sessions, tasks
@@ -22,16 +22,25 @@ def list_tasks(
     tag: str | None = None,
     q: str | None = Query(None, max_length=200),
     planned_date: date | None = None,
-    due_before: AwareDatetime | None = None,
+    due_before: UTCDatetime | None = None,
     pending_approval: bool | None = None,
     include_templates: bool = False,
     limit: int = Query(200, ge=1, le=1000),
     offset: int = Query(0, ge=0),
 ):
     rows = tasks.list_tasks(
-        db, statuses=status, project_id=project_id, category=category, tag=tag, q=q,
-        planned_date=planned_date, due_before=due_before, pending_approval=pending_approval,
-        include_templates=include_templates, limit=limit, offset=offset,
+        db,
+        statuses=status,
+        project_id=project_id,
+        category=category,
+        tag=tag,
+        q=q,
+        planned_date=planned_date,
+        due_before=due_before,
+        pending_approval=pending_approval,
+        include_templates=include_templates,
+        limit=limit,
+        offset=offset,
     )
     return tasks.to_out(db, rows)
 

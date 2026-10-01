@@ -33,7 +33,9 @@ def run_migrations(url: str) -> None:
 
 
 def _error(status: int, code: str, message: str, details=None) -> JSONResponse:
-    return JSONResponse(status_code=status, content={"error": {"code": code, "message": message, "details": details}})
+    return JSONResponse(
+        status_code=status, content={"error": {"code": code, "message": message, "details": details}}
+    )
 
 
 def create_app(config: Config | None = None, engine: Engine | None = None) -> FastAPI:
@@ -87,4 +89,3 @@ def create_app(config: Config | None = None, engine: Engine | None = None) -> Fa
     for module in (projects, tasks, focus, sessions, settings):
         app.include_router(module.router, prefix="/api", dependencies=protected)
     return app
-
