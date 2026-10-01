@@ -55,13 +55,6 @@ def upgrade() -> None:
         sa.Column("before", sa.JSON(), nullable=True),
         sa.Column("after", sa.JSON(), nullable=True),
         sa.Column("reason", sa.Text(), nullable=True),
-        sa.CheckConstraint(
-            "source IN ('user', 'ai', 'scheduler', 'import', 'calendar', 'system')", name="audit_source"
-        ),
-        sa.CheckConstraint(
-            "source IN ('user', 'ai', 'scheduler', 'import', 'calendar', 'system')",
-            name=op.f("ck_audit_log_audit_source"),
-        ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_audit_log")),
     )
     with op.batch_alter_table("audit_log", schema=None) as batch_op:
@@ -103,8 +96,6 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", app.db.UTCDateTime(timezone=True), nullable=False),
         sa.Column("updated_at", app.db.UTCDateTime(timezone=True), nullable=False),
-        sa.CheckConstraint("status IN ('active', 'archived')", name="project_status"),
-        sa.CheckConstraint("status IN ('active', 'archived')", name=op.f("ck_projects_project_status")),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_projects")),
         sa.UniqueConstraint("name", name=op.f("uq_projects_name")),
     )
@@ -199,32 +190,6 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", app.db.UTCDateTime(timezone=True), nullable=False),
         sa.Column("updated_at", app.db.UTCDateTime(timezone=True), nullable=False),
-        sa.CheckConstraint("energy_requirement IN ('low', 'medium', 'high')", name="task_energy"),
-        sa.CheckConstraint(
-            "energy_requirement IN ('low', 'medium', 'high')", name=op.f("ck_tasks_task_energy")
-        ),
-        sa.CheckConstraint(
-            "preferred_time IN ('morning', 'afternoon', 'evening')", name="task_preferred_time"
-        ),
-        sa.CheckConstraint(
-            "preferred_time IN ('morning', 'afternoon', 'evening')", name=op.f("ck_tasks_task_preferred_time")
-        ),
-        sa.CheckConstraint("priority IN ('low', 'medium', 'high', 'critical')", name="task_priority"),
-        sa.CheckConstraint(
-            "priority IN ('low', 'medium', 'high', 'critical')", name=op.f("ck_tasks_task_priority")
-        ),
-        sa.CheckConstraint("source IN ('user', 'ai', 'import', 'recurrence')", name="task_source"),
-        sa.CheckConstraint(
-            "source IN ('user', 'ai', 'import', 'recurrence')", name=op.f("ck_tasks_task_source")
-        ),
-        sa.CheckConstraint(
-            "status IN ('inbox', 'planned', 'in_progress', 'blocked', 'completed', 'cancelled')",
-            name="task_status",
-        ),
-        sa.CheckConstraint(
-            "status IN ('inbox', 'planned', 'in_progress', 'blocked', 'completed', 'cancelled')",
-            name=op.f("ck_tasks_task_status"),
-        ),
         sa.CheckConstraint(
             "estimated_minutes IS NULL OR estimated_minutes > 0", name=op.f("ck_tasks_estimate_positive")
         ),
@@ -340,31 +305,6 @@ def upgrade() -> None:
         sa.Column("id", sa.Uuid(), nullable=False),
         sa.Column("created_at", app.db.UTCDateTime(timezone=True), nullable=False),
         sa.Column("updated_at", app.db.UTCDateTime(timezone=True), nullable=False),
-        sa.CheckConstraint(
-            "end_reason IN ('completed', 'stopped', 'skipped', 'switched', 'unknown')",
-            name="session_end_reason",
-        ),
-        sa.CheckConstraint(
-            "end_reason IN ('completed', 'stopped', 'skipped', 'switched', 'unknown')",
-            name=op.f("ck_focus_sessions_session_end_reason"),
-        ),
-        sa.CheckConstraint(
-            "outcome IN ('completed', 'partial', 'blocked', 'abandoned')", name="session_outcome"
-        ),
-        sa.CheckConstraint(
-            "outcome IN ('completed', 'partial', 'blocked', 'abandoned')",
-            name=op.f("ck_focus_sessions_session_outcome"),
-        ),
-        sa.CheckConstraint("source IN ('timer', 'manual', 'import')", name="session_source"),
-        sa.CheckConstraint(
-            "source IN ('timer', 'manual', 'import')", name=op.f("ck_focus_sessions_session_source")
-        ),
-        sa.CheckConstraint("state IN ('running', 'paused', 'finished')", name="session_state"),
-        sa.CheckConstraint(
-            "state IN ('running', 'paused', 'finished')", name=op.f("ck_focus_sessions_session_state")
-        ),
-        sa.CheckConstraint("type IN ('work', 'rest')", name="session_type"),
-        sa.CheckConstraint("type IN ('work', 'rest')", name=op.f("ck_focus_sessions_session_type")),
         sa.ForeignKeyConstraint(
             ["import_batch_id"],
             ["import_batches.id"],
@@ -436,11 +376,6 @@ def upgrade() -> None:
         sa.Column("errors", sa.JSON(), nullable=False),
         sa.Column("warnings", sa.JSON(), nullable=False),
         sa.Column("session_id", sa.Uuid(), nullable=True),
-        sa.CheckConstraint("status IN ('imported', 'duplicate', 'invalid')", name="import_record_status"),
-        sa.CheckConstraint(
-            "status IN ('imported', 'duplicate', 'invalid')",
-            name=op.f("ck_import_records_import_record_status"),
-        ),
         sa.ForeignKeyConstraint(
             ["batch_id"],
             ["import_batches.id"],
