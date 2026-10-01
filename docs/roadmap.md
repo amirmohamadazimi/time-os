@@ -2,7 +2,7 @@
 
 | Phase | Scope | Status |
 |---|---|---|
-| 1 Foundation | Project setup, database + migrations, task CRUD (dependencies, recurrence, inbox, provenance), projects, focus timer, basic dashboard, audit log, settings | ✅ in this repository |
+| 1 Foundation | Project setup, database + migrations, task CRUD (dependencies, recurrence, inbox, provenance), projects, focus timer, dashboard, audit log, settings, React UI, Docker Compose, CI | ✅ in this repository |
 | 2 Historical data | Focus-session CSV importer (dry run, dedupe, quality flags, rollback), session history, productivity analytics, estimation accuracy, observed patterns | ✅ in this repository |
 | 3 Google Calendar | OAuth, encrypted tokens, incremental sync, free/busy, calendar view | designed ([google-calendar.md](google-calendar.md)) |
 | 4 Scheduler | Availability, scoring, placement, capacity report, validation, rescheduling, explanations | interface defined ([scheduler.md](scheduler.md)) |

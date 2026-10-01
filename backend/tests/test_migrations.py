@@ -2,7 +2,6 @@
 
 import os
 
-import pytest
 from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.config import Config as AlembicConfig
@@ -21,15 +20,18 @@ def _alembic(url: str) -> AlembicConfig:
     return cfg
 
 
-@pytest.mark.skipif(bool(os.environ.get("TIMEOS_TEST_DATABASE_URL")), reason="uses its own database")
 def test_upgrade_matches_models_and_downgrades(tmp_path):
-    url = f"sqlite:///{tmp_path / 'm.db'}"
+    # On PostgreSQL this runs in the test database, which is empty between tests.
+    url = os.environ.get("TIMEOS_TEST_DATABASE_URL") or f"sqlite:///{tmp_path / 'm.db'}"
     command.upgrade(_alembic(url), "head")
     engine = create_engine(url)
-    with engine.connect() as conn:
-        diff = compare_metadata(
-            MigrationContext.configure(conn, opts={"render_as_batch": True}), Base.metadata
-        )
-    assert diff == []
-    command.downgrade(_alembic(url), "base")
-    engine.dispose()
+    try:
+        with engine.connect() as conn:
+            opts = {"render_as_batch": True} if url.startswith("sqlite") else {}
+            diff = compare_metadata(MigrationContext.configure(conn, opts=opts), Base.metadata)
+        assert diff == []
+    finally:
+        command.downgrade(_alembic(url), "base")
+        with engine.begin() as conn:
+            conn.exec_driver_sql("DROP TABLE IF EXISTS alembic_version")
+        engine.dispose()
