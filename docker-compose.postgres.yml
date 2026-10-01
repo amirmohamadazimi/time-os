@@ -1,0 +1,27 @@
+# Override that swaps SQLite for PostgreSQL:
+#   docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: timeos
+      POSTGRES_DB: timeos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - timeos-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U timeos -d timeos"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    environment:
+      TIMEOS_DATABASE_URL: postgresql+psycopg://timeos:${POSTGRES_PASSWORD}@db:5432/timeos
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  timeos-pg:
