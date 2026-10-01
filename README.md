@@ -24,26 +24,42 @@ It keeps three things apart:
 - A Today dashboard, settings, an audit log for destructive and AI actions, and a Claude tool registry
   (tested with mocks; the chat layer comes in Phase 5).
 
-## Quick start (Docker)
+## Run it
+
+Time OS is one process: the API also serves the UI, using about 140 MB of RAM.
+[docs/deploy.md](docs/deploy.md) has all three options in detail.
+
+**On your computer, without Docker** (lightest; needs Python 3.11+, [uv](https://docs.astral.sh/uv/) and Node 22):
+
+```bash
+cd frontend && npm ci && npm run build && cd ..
+cd backend && uv sync && uv run uvicorn app.main:create_app --factory --port 8000
+```
+
+Open http://localhost:8000. Data is in `backend/data/timeos.db`.
+
+**Free in the cloud** on Render with a Neon Postgres database: no card, reachable from any device,
+protected by an access token. It sleeps after 15 idle minutes and takes about a minute to wake.
+Steps in [docs/deploy.md](docs/deploy.md#free-in-the-cloud-render--neon).
+
+**Docker Compose** (one container, SQLite in the `timeos-data` volume):
 
 ```bash
 cp .env.example .env        # optional: set TIMEOS_API_TOKEN and TIMEOS_DEFAULT_TIMEZONE
 docker compose up -d --build
 ```
 
-Open http://localhost:8080. Data lives in the `timeos-data` volume (SQLite). The UI is bound to
-127.0.0.1 and the API is reachable only through it.
-
-PostgreSQL instead of SQLite (set `POSTGRES_PASSWORD` in `.env` first):
+Open http://localhost:8080 (bound to 127.0.0.1 only). PostgreSQL instead of SQLite (set
+`POSTGRES_PASSWORD` in `.env` first):
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d --build
 ```
 
-To back up SQLite, stop the API so the write-ahead log is flushed, then copy the file:
+To back up SQLite, stop the app so the write-ahead log is flushed, then copy the file:
 
 ```bash
-docker compose stop api && docker compose cp api:/app/data/timeos.db ./timeos-backup.db && docker compose start api
+docker compose stop app && docker compose cp app:/app/data/timeos.db ./timeos-backup.db && docker compose start app
 ```
 
 ## Development
@@ -71,24 +87,27 @@ working hours, timer lengths and automation modes are edited in the app's Settin
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `TIMEOS_DATABASE_URL` | `sqlite:///./data/timeos.db` | SQLAlchemy URL; `postgresql+psycopg://…` for PostgreSQL |
+| `TIMEOS_DATABASE_URL` | `sqlite:///./data/timeos.db` | SQLAlchemy URL; PostgreSQL as `postgresql+psycopg://…` (hosted `postgres://…` URLs work as they are) |
 | `TIMEOS_API_TOKEN` | unset | When set, every API call needs `Authorization: Bearer <token>` |
 | `TIMEOS_DEFAULT_TIMEZONE` | `UTC` | Timezone for first-run settings |
 | `TIMEOS_AUTO_MIGRATE` | `true` | Run Alembic migrations on startup |
 | `TIMEOS_CORS_ORIGINS` | Vite dev server | Allowed browser origins (JSON list) |
 | `TIMEOS_MAX_UPLOAD_MB` | `20` | CSV upload limit |
+| `TIMEOS_STATIC_DIR` | `../frontend/dist` | Built UI to serve; the UI is skipped when the folder has no `index.html` |
 
 ## Privacy and security
 
-- Local-first: everything is stored in your own database; nothing leaves the machine today.
+- Your data is in your own database: on your machine, or in your own Neon database when you host it
+  yourself. Nothing is sent anywhere else today.
 - Times are stored in UTC with the local offset recorded per session.
-- Optional bearer token, compared in constant time. Without it, anyone who can reach the port can use the API.
+- Optional bearer token, compared in constant time. Without it, anyone who can reach the port can use the API;
+  the Render setup always generates one. The UI asks for it once per browser.
 - Destructive and AI-initiated actions are written to the audit log.
 - API keys for Google and Anthropic (later phases) stay server-side and are never sent to the browser.
 
 ## Documentation
 
-[Architecture](docs/architecture.md) · [Database schema](docs/database-schema.md) · [API](docs/api.md) ·
+[Running and free hosting](docs/deploy.md) · [Architecture](docs/architecture.md) · [Database schema](docs/database-schema.md) · [API](docs/api.md) ·
 [Focus sessions](docs/focus-sessions.md) · [CSV import](docs/csv-import.md) · [Analytics](docs/analytics.md) ·
 [Scheduler interface](docs/scheduler.md) · [Claude tools](docs/claude-tools.md) ·
 [Google Calendar design](docs/google-calendar.md) · [Testing](docs/testing.md) · [Roadmap](docs/roadmap.md)

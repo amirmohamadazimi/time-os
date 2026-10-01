@@ -1,10 +1,11 @@
-# Local-first setup: SQLite in a named volume, UI on http://localhost:8080.
+# Local setup: one container, SQLite in a named volume, UI and API on http://localhost:8080.
 # For PostgreSQL: docker compose -f docker-compose.yml -f docker-compose.postgres.yml up -d
+# Without Docker at all (lighter on RAM): see "Run without Docker" in README.md.
 name: timeos
 
 services:
-  api:
-    build: ./backend
+  app:
+    build: .
     restart: unless-stopped
     env_file:
       - path: .env
@@ -13,16 +14,9 @@ services:
       TIMEOS_DATABASE_URL: ${TIMEOS_DATABASE_URL:-sqlite:////app/data/timeos.db}
     volumes:
       - timeos-data:/app/data
-
-  web:
-    build: ./frontend
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_healthy
     ports:
       # Bound to localhost only: your calendar and productivity data stay on this machine.
-      - "127.0.0.1:${TIMEOS_PORT:-8080}:80"
+      - "127.0.0.1:${TIMEOS_PORT:-8080}:8000"
 
 volumes:
   timeos-data:
