@@ -89,3 +89,24 @@ class ActionSource(StrEnum):
     import_ = "import"
     calendar = "calendar"
     system = "system"
+
+
+class CalendarProvider(StrEnum):
+    ical = "ical"  # read-only feed (e.g. Google Calendar's secret iCal address)
+    google = "google"  # OAuth (later)
+
+
+class CalendarAccountStatus(StrEnum):
+    connected = "connected"
+    error = "error"  # the stored link or token can no longer be used; the user must reconnect
+
+
+class CalendarEventStatus(StrEnum):
+    confirmed = "confirmed"
+    tentative = "tentative"
+    cancelled = "cancelled"  # kept as a tombstone so the time is freed without losing history
+
+
+class EventOrigin(StrEnum):
+    user_created = "USER_CREATED_EVENT"  # never modified or deleted automatically
+    app_generated = "APP_GENERATED_EVENT"

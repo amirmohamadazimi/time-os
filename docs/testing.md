@@ -3,7 +3,7 @@
 ## Running the tests
 
 ```bash
-# Backend: 102 tests, SQLite in memory by default
+# Backend: 123 tests, SQLite in memory by default
 cd backend
 uv sync --extra postgres
 uv run ruff check . && uv run ruff format --check .

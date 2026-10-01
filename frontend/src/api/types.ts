@@ -305,3 +305,71 @@ export interface UserSettings {
     max_multiplier: number;
   };
 }
+
+export interface CalendarInfo {
+  id: string;
+  account_id: string;
+  summary: string;
+  timezone: string | null;
+  color: string | null;
+  selected: boolean;
+  all_day_busy: boolean;
+  last_synced_at: string | null;
+  last_error: string | null;
+}
+
+export interface CalendarAccount {
+  id: string;
+  provider: "ical" | "google";
+  display_name: string;
+  status: "connected" | "error";
+  feed_host: string | null;
+  created_at: string;
+  calendars: CalendarInfo[];
+}
+
+export interface CalendarEvent {
+  id: string;
+  calendar_id: string;
+  title: string;
+  location: string | null;
+  start_time: string;
+  end_time: string;
+  all_day: boolean;
+  busy: boolean;
+  status: "confirmed" | "tentative" | "cancelled";
+  origin: "USER_CREATED_EVENT" | "APP_GENERATED_EVENT";
+  recurring_event_id: string | null;
+}
+
+export interface CalendarSyncResult {
+  calendar_id: string;
+  summary: string;
+  status: "synced" | "not_modified" | "skipped" | "error";
+  created: number;
+  updated: number;
+  cancelled: number;
+  unchanged: number;
+  skipped_components: number;
+  truncated: boolean;
+  error: string | null;
+}
+
+export interface TimeSpan {
+  start: string;
+  end: string;
+  minutes: number;
+}
+
+export interface FreeTime {
+  date: string;
+  working_day: boolean;
+  window_start: string | null;
+  window_end: string | null;
+  busy: (TimeSpan & { titles: string[] })[];
+  free: TimeSpan[];
+  busy_minutes: number;
+  free_minutes: number;
+  calendars: number;
+  synced_at: string | null;
+}

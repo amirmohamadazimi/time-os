@@ -13,7 +13,7 @@ Branch `foundation-phase-1-2`, draft PR #1.
   flags, rollback), analytics (summary, timeseries, by hour/weekday/project/tag, gaps, observed patterns,
   estimation multipliers), scheduler interface types (`app/scheduler/types.py`), Claude tool registry
   (`app/ai/tools.py`, 13 tools).
-- **Tests**: 102 backend tests pass on SQLite and PostgreSQL 16 (including migrations); 10 frontend tests.
+- **Tests**: 123 backend tests pass on SQLite and PostgreSQL 16 (including migrations); 10 frontend tests.
 - **Frontend** (`frontend/`, React 19 + Vite + Mantine 8 + TanStack Query): Dashboard, Tasks, Projects,
   Focus, Sessions, Analytics, Import, Settings. Smoke-tested against a live API in headless Chromium.
 - **Ops**: Dockerfiles (backend: uv, non-root, healthcheck; frontend: nginx proxying `/api`),
@@ -21,9 +21,10 @@ Branch `foundation-phase-1-2`, draft PR #1.
   GitHub Actions CI (ruff, pytest on SQLite + PostgreSQL, frontend checks, image builds).
 
 ## Next
-1. **Phase 3, Google Calendar** (design in `docs/google-calendar.md`): needs a Google Cloud OAuth client
-   (client id + secret) from the user. Encrypted token storage (`TIMEOS_SECRET_KEY`), incremental sync,
-   free/busy, event classification (never modify `USER_CREATED_EVENT`), calendar view. Tests with a fake client.
+1. **Phase 3, Google Calendar**: read-only sync from the secret iCal address is done (branch
+   `calendar-ical`): encrypted link, recurrence expansion, tombstones, free time, Calendar page and Today
+   card. OAuth (writing focus blocks) stays designed in `docs/google-calendar.md` and needs a Google Cloud
+   OAuth client the user creates; the user chose iCal first (2026-10-01).
 2. **Phase 4, Scheduler**: implement `app/scheduler/` against `types.py` and `docs/scheduler.md`
    (availability → scoring → placement → validation → capacity report → rescheduling). Pure functions, heavy tests.
 3. **Phase 5, Claude**: provider adapter (Anthropic SDK, `TIMEOS_AI_MODEL`, default `claude-opus-5-5`),
@@ -32,7 +33,7 @@ Branch `foundation-phase-1-2`, draft PR #1.
 
 ## Open questions for the user
 - A real focus-session export sample (to confirm units, timestamps and tags).
-- Google Cloud OAuth client for Phase 3.
+- Google Cloud OAuth client, only if Time OS should write focus blocks to Google Calendar.
 
 ## Dev quickstart
 ```

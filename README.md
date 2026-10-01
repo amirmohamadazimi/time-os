@@ -7,7 +7,7 @@ on top. Claude is never the source of truth: it acts only through the same valid
 It keeps three things apart:
 
 - **Plan**: tasks and projects (estimates, deadlines, dependencies, recurrence, priorities)
-- **Available time**: your calendar (Google Calendar, Phase 3)
+- **Available time**: your calendar (Google Calendar via its secret iCal address)
 - **Actual behaviour**: focus sessions, from the built-in timer or imported history
 
 ## What works today (Phases 1 and 2)
@@ -21,6 +21,8 @@ It keeps three things apart:
 - CSV import of focus-app exports with preview, duplicate detection, quality flags and one-click rollback.
 - Analytics: focus over time, by hour and weekday, by project and tag, completion and interruption
   rates, observed patterns, and estimate accuracy with shrunk planning multipliers.
+- Google Calendar (or any iCal feed) via its secret address: read-only sync, recurring events,
+  busy/free time inside working hours, a week view and a Today card. No Google Cloud setup.
 - A Today dashboard, settings, an audit log for destructive and AI actions, and a Claude tool registry
   (tested with mocks; the chat layer comes in Phase 5).
 
@@ -77,6 +79,8 @@ working hours, timer lengths and automation modes are edited in the app's Settin
 | `TIMEOS_AUTO_MIGRATE` | `true` | Run Alembic migrations on startup |
 | `TIMEOS_CORS_ORIGINS` | Vite dev server | Allowed browser origins (JSON list) |
 | `TIMEOS_MAX_UPLOAD_MB` | `20` | CSV upload limit |
+| `TIMEOS_SECRET_KEY` | unset | Encrypts stored secrets (calendar links). Unset: a random key is created in `TIMEOS_SECRET_KEY_FILE` |
+| `TIMEOS_SECRET_KEY_FILE` | `./data/secret.key` | Where that generated key lives; back it up with the database |
 
 ## Privacy and security
 
