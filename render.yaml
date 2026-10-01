@@ -15,5 +15,7 @@ services:
         sync: false # paste the Neon connection string when Render asks
       - key: TIMEOS_API_TOKEN
         generateValue: true # the app is on the public internet: every API call needs this token
+      - key: TIMEOS_SECRET_KEY
+        generateValue: true # encrypts stored secrets such as calendar links; must survive redeploys
       - key: TIMEOS_DEFAULT_TIMEZONE
         value: Asia/Tehran

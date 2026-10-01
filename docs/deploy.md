@@ -80,7 +80,8 @@ To change the timezone used for first-run settings, edit `TIMEOS_DEFAULT_TIMEZON
 - **Backups.** `pg_dump "<neon connection string>" > timeos-backup.sql` from any machine with
   PostgreSQL client tools, or use Neon's branch and restore features.
 - **Changing the token.** Edit `TIMEOS_API_TOKEN` in Render's **Environment** page; each browser
-  will ask for the new one.
+  will ask for the new one. Leave `TIMEOS_SECRET_KEY` alone: it encrypts stored secrets such as
+  calendar links, and changing it means reconnecting them.
 - **Moving back to your computer.** Run locally with `uv sync --extra postgres`, then
   `TIMEOS_DATABASE_URL=<neon connection string> uv run --extra postgres uvicorn app.main:create_app --factory`
   to use the same data, or dump and restore into a local database.
