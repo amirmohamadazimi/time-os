@@ -167,7 +167,9 @@ export function SettingsPage() {
           </SimpleGrid>
         </Section>
         <Section title="Import quality rules" description="Flags applied to imported sessions. Flagged sessions stay visible but can be excluded from analytics.">
-          <SimpleGrid cols={{ base: 2, sm: 4 }}>
+          <SimpleGrid cols={{ base: 2, sm: 5 }}>
+            <NumberInput label="Shortest real session (s)" min={0} max={600}
+              {...form.getInputProps("import_rules.short_session_seconds")} />
             <NumberInput label="Long session (min)" min={30} {...form.getInputProps("import_rules.long_active_minutes")} />
             <NumberInput label="Long pause (min)" min={5} {...form.getInputProps("import_rules.long_pause_minutes")} />
             <NumberInput label="Implausible length (h)" min={2} {...form.getInputProps("import_rules.implausible_elapsed_hours")} />
