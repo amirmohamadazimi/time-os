@@ -1,8 +1,8 @@
 import uuid
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models.enums import ImportRecordStatus
 from app.schemas.common import ORMModel
@@ -24,6 +24,10 @@ class ImportSummary(BaseModel):
     first_session: datetime | None
     last_session: datetime | None
     duration_unit: str
+    duration_meaning: Literal["actual", "planned"] = Field(
+        "actual", description="whether the duration column is time worked or the timer's planned target"
+    )
+    sections: list[str] = Field(default_factory=list, description="sections of a multi-section export")
     assumed_timezone_rows: int
     columns_detected: dict[str, str]
     warnings_by_code: dict[str, int]

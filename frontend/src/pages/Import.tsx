@@ -50,7 +50,9 @@ function Report({ report }: { report: ImportReport }) {
       </SimpleGrid>
       <Paper withBorder p="md">
         <Text size="sm">
-          Durations read as <b>{s.duration_unit}</b>.{" "}
+          {s.sections.length > 0 && <>Multi-section export ({s.sections.join(", ")}); sessions read from the sessions section. </>}
+          Durations read as <b>{s.duration_unit}</b>, as{" "}
+          <b>{s.duration_meaning === "planned" ? "the planned timer length (actual time comes from the timestamps)" : "time worked"}</b>.{" "}
           {s.assumed_timezone_rows > 0 && <>{s.assumed_timezone_rows} row(s) had no timezone and used the one selected above. </>}
         </Text>
         <Text size="sm" mt={4}>

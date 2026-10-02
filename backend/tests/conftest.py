@@ -64,7 +64,10 @@ def clock():
 
 @pytest.fixture
 def client(engine, clock):
-    application = create_app(Config(auto_migrate=False, api_token=None), engine=engine)
+    # No frontend build in API tests: unknown paths 404 instead of serving index.html.
+    application = create_app(
+        Config(auto_migrate=False, api_token=None, static_dir="/nonexistent"), engine=engine
+    )
     application.dependency_overrides[get_now] = lambda: clock.now
     with TestClient(application) as c:
         yield c

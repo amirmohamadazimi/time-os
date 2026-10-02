@@ -1,0 +1,21 @@
+# Render Blueprint: one free web service. Data lives in a free Neon Postgres database, because
+# Render's free services have no persistent disk and its free Postgres is deleted after 30 days.
+# Steps: docs/deploy.md
+services:
+  - type: web
+    name: timeos
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: TIMEOS_DATABASE_URL
+        sync: false # paste the Neon connection string when Render asks
+      - key: TIMEOS_API_TOKEN
+        generateValue: true # the app is on the public internet: every API call needs this token
+      - key: TIMEOS_SECRET_KEY
+        generateValue: true # encrypts stored secrets such as calendar links; must survive redeploys
+      - key: TIMEOS_DEFAULT_TIMEZONE
+        value: Asia/Tehran

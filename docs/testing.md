@@ -3,7 +3,7 @@
 ## Running the tests
 
 ```bash
-# Backend: 123 tests, SQLite in memory by default
+# Backend: 127 tests, SQLite in memory by default
 cd backend
 uv sync --extra postgres
 uv run ruff check . && uv run ruff format --check .
@@ -20,7 +20,7 @@ npm run typecheck && npm test && npm run build
 ```
 
 CI (`.github/workflows/ci.yml`) runs all of the above on every pull request: the backend suite on
-SQLite and on PostgreSQL 16, the frontend checks, and a build of both Docker images.
+SQLite and on PostgreSQL 16, the frontend checks, and a build of the Docker image.
 
 ## How the backend tests are built
 
@@ -49,7 +49,7 @@ SQLite and on PostgreSQL 16, the frontend checks, and a build of both Docker ima
 | Sessions | `test_sessions.py` | manual log (overlap, future), immutable history, annotations, soft delete |
 | Settings and auth | `test_settings_and_auth.py` | deep-merge updates, validation, bearer token |
 | Import parsing | `test_import_parsing.py` | timestamps (ISO, offsets, naive, epoch), durations, booleans, types, tags |
-| Import service | `test_import_service.py` | the messy fixture below, dry run vs commit, re-import, rollback, bad files |
+| Import service | `test_import_service.py` | both fixtures below, dry run vs commit, re-import, rollback, bad files, settings |
 | Analytics | `test_analytics.py` | summary metrics, hour spreading, weekday averages, tags, estimation shrinkage, patterns |
 | Dashboard | `test_dashboard.py` | today totals including the live session, next-task ordering, due and overdue |
 | Claude tools | `test_ai_tools.py` | tool schemas, validation errors, confirmation gating, approval flow |
@@ -63,8 +63,10 @@ overnight, an exact duplicate id, a same-session duplicate with a different id, 
 end before start, an unknown type, and a row with an extra field. Expected result: 9 imported,
 2 duplicates, 4 invalid.
 
-When a real export is available, add it (anonymised) as a second fixture and a test asserting its
-summary.
+`backend/tests/fixtures/focusmeter_export.csv` is a synthetic file in FocusMeter's multi-section format,
+modelled on a real export (the real data is not committed). It covers planned-duration detection,
+timer blocks that correct an idle finished timer, accidental taps seconds apart, an overnight pause,
+and a session still running at export.
 
 ## Frontend
 

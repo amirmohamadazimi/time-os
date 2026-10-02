@@ -1,10 +1,14 @@
-import { AppShell, Badge, Burger, Group, NavLink, Text, Title } from "@mantine/core";
+import { AppShell, Badge, Burger, Center, Group, Loader, NavLink, Text, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
   IconCalendar, IconChartBar, IconClock, IconFileImport, IconFolders, IconHistory, IconLayoutDashboard,
   IconListCheck, IconSettings,
 } from "@tabler/icons-react";
+import { useQuery } from "@tanstack/react-query";
 import { NavLink as RouterLink, Route, Routes, useLocation } from "react-router-dom";
+import { ApiError, getToken } from "./api/client";
+import { endpoints } from "./api/endpoints";
+import { TokenGate } from "./components/TokenGate";
 import { useCurrentSession } from "./hooks/useFocus";
 import { formatClock } from "./lib/format";
 import { AnalyticsPage } from "./pages/Analytics";
@@ -41,6 +45,13 @@ function LiveBadge() {
 }
 
 export function App() {
+  const auth = useQuery({ queryKey: ["settings"], queryFn: endpoints.settings, retry: false });
+  if (auth.isLoading) return <Center mih="100vh"><Loader /></Center>;
+  if (auth.error instanceof ApiError && auth.error.status === 401) return <TokenGate rejected={getToken() !== null} />;
+  return <Shell />;
+}
+
+function Shell() {
   const [opened, { toggle, close }] = useDisclosure();
   const location = useLocation();
   return (
