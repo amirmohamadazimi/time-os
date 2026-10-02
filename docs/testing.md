@@ -20,7 +20,7 @@ npm run typecheck && npm test && npm run build
 ```
 
 CI (`.github/workflows/ci.yml`) runs all of the above on every pull request: the backend suite on
-SQLite and on PostgreSQL 16, the frontend checks, and a build of both Docker images.
+SQLite and on PostgreSQL 16, the frontend checks, and a build of the Docker image.
 
 ## How the backend tests are built
 

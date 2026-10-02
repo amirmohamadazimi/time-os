@@ -16,7 +16,7 @@ services:
       timeout: 3s
       retries: 10
 
-  api:
+  app:
     environment:
       TIMEOS_DATABASE_URL: postgresql+psycopg://timeos:${POSTGRES_PASSWORD}@db:5432/timeos
     depends_on:

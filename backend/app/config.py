@@ -6,7 +6,7 @@ User-facing preferences (timezone, working hours, modes) live in the database as
 
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,10 +21,20 @@ class Config(BaseSettings):
     )
     default_timezone: str = "UTC"
     max_upload_mb: int = 20
+    static_dir: str | None = None  # built frontend to serve; defaults to ../frontend/dist when present
 
     # Phase 3 / 5 (unused until those phases land)
     secret_key: str | None = None
     ai_model: str = "claude-opus-5-5"
+
+    @field_validator("database_url")
+    @classmethod
+    def _psycopg_driver(cls, url: str) -> str:
+        """Hosted Postgres (Neon, Render, …) hands out ``postgres://`` URLs; use the psycopg 3 driver."""
+        for prefix in ("postgres://", "postgresql://"):
+            if url.startswith(prefix):
+                return "postgresql+psycopg://" + url[len(prefix) :]
+        return url
 
 
 @lru_cache

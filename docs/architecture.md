@@ -106,10 +106,12 @@ browser refresh or a second tab never loses a running session.
 
 ## 5. Local-first deployment
 
-Everything runs on the user's machine: `docker compose up` starts the API (with SQLite in a
-named volume) and the UI. No cloud dependency is required except Google Calendar (Phase 3)
-and Claude (Phase 5), both optional. The same images run on a server with PostgreSQL via
-`docker-compose.postgres.yml`.
+One process serves both the API and the built UI (`frontend/dist`, or `TIMEOS_STATIC_DIR`),
+so Time OS runs with or without Docker in about 140 MB of RAM. By default everything runs on
+the user's machine with SQLite. No cloud dependency is required except Google Calendar
+(Phase 3) and Claude (Phase 5), both optional. The same image runs with PostgreSQL via
+`docker-compose.postgres.yml`, or for free on Render with a Neon database
+(`render.yaml`, [deploy.md](deploy.md)).
 
 ## 6. Failure behaviour
 
@@ -126,8 +128,9 @@ Time OS is single-user and single-tenant: one database per person.
 
 * **Local mode (default):** the API listens on localhost only. No login.
 * **Server mode:** set `TIMEOS_API_TOKEN`; every `/api` route except `/api/health` then
-  requires `Authorization: Bearer <token>` (constant-time comparison). The UI stores the token
-  locally after the user enters it on the Settings page. A full session-cookie login can replace
+  requires `Authorization: Bearer <token>` (constant-time comparison). When the API answers 401,
+  the UI shows a token prompt and stores the token in local storage (it can also be changed on
+  the Settings page). The hosted setup (Render) always runs in this mode. A full session-cookie login can replace
   this later without touching services.
 * **Secrets** come only from environment variables (`.env`, never committed). The browser
   never receives the Anthropic key or Google client secret; all third-party calls are made by
