@@ -1,0 +1,57 @@
+Name: sessions
+id,startTime,duration,endTime,totalPausedTime,completed,stopped,type,notes,tags
+1,2026-08-03T09:00:00+03:30,1500,2026-08-03T09:25:01+03:30,0,Y,,Work,,Study
+2,2026-08-03T09:25:05+03:30,300,2026-08-03T09:30:05+03:30,0,Y,,Rest,,
+3,2026-08-03T10:00:00+03:30,1500,2026-08-03T10:40:00+03:30,900,Y,,Work,,Study
+4,2026-08-03T11:00:00+03:30,3600,2026-08-03T11:12:00+03:30,0,,Y,Work,,Work
+5,2026-08-03T11:12:05+03:30,300,2026-08-03T11:12:07+03:30,0,,Y,Rest,,
+6,2026-08-03T11:12:10+03:30,300,2026-08-03T11:12:12+03:30,0,,Y,Rest,,
+7,2026-08-03T13:00:00+03:30,1560,2026-08-03T15:30:00+03:30,0,,Y,Work,,Work
+8,2026-08-03T22:00:00+03:30,3600,2026-08-04T16:00:00+03:30,61200,Y,,Work,,Work
+9,2026-08-04T17:00:00+03:30,3600,2026-08-04T17:30:00+03:30,0,,Y,Work,,
+10,2026-08-04T18:00:00+03:30,3000,2026-08-04T18:50:00+03:30,0,Y,,Work,,Study
+11,2026-08-04T20:00:00+03:30,3600,1970-01-01T03:30:00+03:30,0,,,Work,,Work
+
+Name: events
+id,eventType,extra,timestamp
+1,session-start,"sessionId:1, durationSecs:1500, sessionType:Work, timerDirection:1, source:1",2026-08-03T09:00:00+03:30
+2,session-ended,"sessionId:1, elapsedTime:1500, source:2",2026-08-03T09:25:00+03:30
+3,session-extended,"sessionId:7, extendTimeSecs:60, source:1",2026-08-03T15:29:57+03:30
+
+Name: tags
+id,tagValue,tagHash,extra,description,archived
+1,Work,0f9263536b9fc61ada745644735bfd8f,"{""color"":""#c0c0c0""}",,0
+2,Study,0a3dac2314e66e15240f019afcbd6b0f,"{""color"":""#e35007""}",,0
+
+Name: session-tags
+id,sessionId,tagId,tagHash
+1,1,2,
+2,4,1,
+
+Name: timeblocks
+id,startTime,duration,sessionId,counter
+1,2026-08-03T09:00:00+03:30,1501,1,0
+2,2026-08-03T09:25:05+03:30,300,2,0
+3,2026-08-03T10:00:00+03:30,600,3,0
+4,2026-08-03T10:25:00+03:30,900,3,1
+5,2026-08-03T11:00:00+03:30,720,4,0
+6,2026-08-03T11:12:05+03:30,2,5,0
+7,2026-08-03T11:12:10+03:30,2,6,0
+8,2026-08-03T13:00:00+03:30,1500,7,0
+9,2026-08-03T15:29:57+03:30,3,7,1
+10,2026-08-03T22:00:00+03:30,1800,8,0
+11,2026-08-04T15:30:00+03:30,1800,8,1
+12,2026-08-04T17:00:00+03:30,1800,9,0
+13,2026-08-04T18:00:00+03:30,3000,10,0
+14,2026-08-04T20:00:00+03:30,408,11,0
+
+Name: flows
+id,name,editable,timers,options,position
+10001,Pomodoro classic,N,"work:1500, rest:300","{""endType"":""loop""}",0
+
+Settings.WeekStartDay,
+Settings.LastEditTimerLockedField,2
+dateString,2026-08-04T17:00:00.000Z
+isoDateString,2026-08-04T17:00:00.000Z
+timezoneOffset,-210
+appVersion,1.25.1

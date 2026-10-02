@@ -3,6 +3,10 @@
 Expected (case/format-insensitive) columns: id, startTime, duration, endTime, totalPausedTime,
 completed, stopped, type, notes, tags. Only a start time plus either an end time or a duration
 is required; everything else is optional.
+
+Multi-section exports (FocusMeter writes ``Name: sessions``, ``Name: timeblocks``, … blocks in
+one file) are split first: the ``sessions`` block is imported, and ``timeblocks`` (the app's own
+running intervals per session) supply the exact active time and pause count when present.
 """
 
 import csv
@@ -42,6 +46,10 @@ COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
 }
 
 
+SECTION_HEADER = re.compile(r"^\s*Name:\s*(\S[^,]*?)\s*,*\s*$")
+DurationMeaning = Literal["actual", "planned"]
+
+
 @dataclass(frozen=True)
 class ImportOptions:
     default_timezone: str = "UTC"
@@ -50,6 +58,7 @@ class ImportOptions:
     long_pause_minutes: int = 120
     implausible_elapsed_hours: int = 16
     duplicate_tolerance_seconds: int = 60
+    short_session_seconds: int = 60
 
 
 @dataclass
@@ -64,6 +73,8 @@ class ParsedRow:
     tz_offset_minutes: int = 0
     active_s: int | None = None
     paused_s: int = 0
+    planned_s: int | None = None
+    pause_count: int | None = None
     type: str = "work"
     end_reason: str = "unknown"
     notes: str | None = None
@@ -75,6 +86,8 @@ class ParsedRow:
     _duration: ParsedDuration | None = None
     _paused: ParsedDuration | None = None
     _assumed_tz: bool = False
+    _reported_s: float | None = None  # the duration column, in seconds
+    _times_given: bool = False  # both timestamps came from the file (neither was derived)
 
     @property
     def valid(self) -> bool:
@@ -93,6 +106,8 @@ class ParseResult:
     columns: dict[str, str]  # canonical name -> header in the file
     duration_unit: str
     file_errors: list[str]
+    duration_meaning: DurationMeaning = "actual"
+    sections: list[str] = field(default_factory=list)  # names, for multi-section exports
 
 
 def _norm_header(name: str) -> str:
@@ -128,9 +143,56 @@ def _dialect(sample: str) -> type[csv.Dialect] | csv.Dialect:
         return csv.excel
 
 
+def split_sections(text: str) -> dict[str, str] | None:
+    """``{"sessions": csv_text, …}`` for a multi-section export, else None."""
+    lines = text.splitlines()
+    first = next((line for line in lines if line.strip()), "")
+    if not SECTION_HEADER.match(first):
+        return None
+    sections: dict[str, list[str]] = {}
+    current: list[str] = []
+    for line in lines:
+        match = SECTION_HEADER.match(line)
+        if match:
+            current = sections.setdefault(match.group(1).strip().lower(), [])
+        else:
+            current.append(line)
+    return {name: "\n".join(body).strip("\n") for name, body in sections.items()}
+
+
+def _timeblocks(text: str | None) -> dict[str, tuple[float, int]]:
+    """session id -> (sum of block durations as written, number of blocks)."""
+    if not text:
+        return {}
+    reader = csv.DictReader(io.StringIO(text, newline=""))
+    by_norm = {_norm_header(h): h for h in reader.fieldnames or [] if h}
+    sid, dur = by_norm.get("sessionid"), by_norm.get("duration")
+    if not sid or not dur:
+        return {}
+    out: dict[str, tuple[float, int]] = {}
+    for rec in reader:
+        key, value = clean(rec.get(sid)), clean(rec.get(dur))
+        try:
+            seconds = float(value) if value is not None else None
+        except ValueError:
+            seconds = None
+        if key is None or seconds is None or seconds < 0:
+            continue
+        total, count = out.get(key, (0.0, 0))
+        out[key] = (total + seconds, count + 1)
+    return out
+
+
 def parse_file(data: bytes, options: ImportOptions) -> ParseResult:
     text = decode(data)
     tz = ZoneInfo(options.default_timezone)
+    sections = split_sections(text)
+    blocks: dict[str, tuple[float, int]] = {}
+    if sections is not None:
+        if not sections:
+            return ParseResult([], {}, options.duration_unit, ["empty_file: no sections"])
+        blocks = _timeblocks(sections.get("timeblocks"))
+        text = sections.get("sessions") or next(iter(sections.values()))
     reader = csv.reader(io.StringIO(text, newline=""), _dialect(text[:20000]))
     try:
         headers = [h.strip() for h in next(reader)]
@@ -143,7 +205,7 @@ def parse_file(data: bytes, options: ImportOptions) -> ParseResult:
     if "end_time" not in columns and "duration" not in columns:
         file_errors.append("missing_column: need an end time or a duration column")
     if file_errors:
-        return ParseResult([], columns, options.duration_unit, file_errors)
+        return ParseResult([], columns, options.duration_unit, file_errors, sections=list(sections or {}))
 
     rows: list[ParsedRow] = []
     for index, cells in enumerate(reader, start=2):  # spreadsheet numbering: header is row 1
@@ -159,10 +221,14 @@ def parse_file(data: bytes, options: ImportOptions) -> ParseResult:
         rows.append(row)
 
     unit = options.duration_unit if options.duration_unit != "auto" else infer_unit(rows)
+    factor = UNIT_FACTORS[unit.split(" ")[0]]
     for row in rows:
-        _derive(row, UNIT_FACTORS[unit.split(" ")[0]], options)
+        _derive(row, factor, options, blocks.get(row.external_id or ""))
+    meaning = duration_meaning(rows)
+    for row in rows:
+        _apply_duration_meaning(row, meaning)
     _mark_in_file_duplicates(rows, options.duplicate_tolerance_seconds)
-    return ParseResult(rows, columns, unit, [])
+    return ParseResult(rows, columns, unit, [], meaning, list(sections or {}))
 
 
 def _get(row: ParsedRow, columns: dict[str, str], key: str) -> str | None:
@@ -173,8 +239,13 @@ def _get(row: ParsedRow, columns: dict[str, str], key: str) -> str | None:
 def _parse_fields(row: ParsedRow, columns: dict[str, str], tz: ZoneInfo) -> None:
     row.external_id = clean(_get(row, columns, "external_id"))
     for key, attr in (("start_time", "start_utc"), ("end_time", "end_utc")):
+        value = clean(_get(row, columns, key))
+        if key == "end_time" and value is not None and (value == "0" or value.startswith("1970-01-01")):
+            # Apps write the Unix epoch as the end of a session that was still running at export.
+            row.error("unfinished_session", "no end time yet: the session was still running when exported")
+            continue
         try:
-            ts = parse_timestamp(_get(row, columns, key), tz)
+            ts = parse_timestamp(value, tz)
         except ParseError as exc:
             row.error(f"invalid_{key}", str(exc))
             continue
@@ -253,9 +324,15 @@ def _seconds(parsed: ParsedDuration | None, factor: float) -> float | None:
     return parsed.seconds if parsed.seconds is not None else parsed.number * factor
 
 
-def _derive(row: ParsedRow, factor: float, options: ImportOptions) -> None:
+def _derive(
+    row: ParsedRow, factor: float, options: ImportOptions, blocks: tuple[float, int] | None = None
+) -> None:
     duration = _seconds(row._duration, factor)
     paused = _seconds(row._paused, factor)
+    row._reported_s = duration
+    row._times_given = row.start_utc is not None and row.end_utc is not None
+    if any(e.startswith("unfinished_session") for e in row.errors):
+        return
     if row.start_utc is None and row.end_utc is not None and duration is not None:
         row.start_utc = row.end_utc - timedelta(seconds=duration + (paused or 0))
         row.warn("start_time_derived", "computed from end time and duration")
@@ -289,18 +366,25 @@ def _derive(row: ParsedRow, factor: float, options: ImportOptions) -> None:
         return
     paused = min(paused, elapsed)
     active = elapsed - paused
-    if duration is not None:
-        tolerance = max(60.0, 0.05 * elapsed)
-        if abs(duration - active) > tolerance and abs(duration - elapsed) > tolerance:
+    if blocks is not None:
+        # The app's own running intervals: more exact than end - start - paused, which misses time a
+        # finished timer sat waiting for the user.
+        block_active = min(blocks[0] * factor, elapsed)
+        if abs(block_active - active) > max(60.0, 0.02 * elapsed):
             row.warn(
-                "duration_mismatch",
-                f"reported duration {duration:.0f}s vs active {active:.0f}s from timestamps; timestamps used",
+                "active_from_timeblocks",
+                f"timestamps imply {active:.0f}s active, the app's timer blocks {block_active:.0f}s; "
+                "timer blocks used",
             )
+        active, paused = block_active, elapsed - block_active
+        row.pause_count = max(blocks[1] - 1, 0)
     row.active_s = int(round(active))
     row.paused_s = int(round(paused))
 
     if elapsed == 0:
         row.quality_flags.append("zero_length")
+    elif active < options.short_session_seconds:
+        row.quality_flags.append("too_short")
     if active > options.long_active_minutes * 60:
         row.quality_flags.append("long_active")
     if paused > options.long_pause_minutes * 60:
@@ -309,26 +393,73 @@ def _derive(row: ParsedRow, factor: float, options: ImportOptions) -> None:
         row.quality_flags.append("implausible_elapsed")
     for flag in row.quality_flags:
         row.warn(flag)
-    row.exclude_from_stats = bool({"zero_length", "implausible_elapsed"} & set(row.quality_flags))
+    flags = set(row.quality_flags)
+    # A long elapsed time explained by pauses is fine; only a long *active* time means the timer ran away.
+    row.exclude_from_stats = bool(
+        {"zero_length", "too_short"} & flags or {"implausible_elapsed", "long_active"} <= flags
+    )
+
+
+def duration_meaning(rows: list[ParsedRow]) -> DurationMeaning:
+    """Is the duration column the time actually worked, or the timer's planned target?
+
+    Pomodoro-style apps (FocusMeter, …) export the target: completed sessions match it, stopped
+    sessions fall short of it. Decided once per file from rows with both timestamps.
+    """
+
+    def tolerance(row: ParsedRow) -> float:
+        return max(60.0, 0.05 * (row.active_s or 0))
+
+    measured = [r for r in rows if r.valid and r._times_given and r._reported_s is not None]
+    completed = [r for r in measured if r.end_reason == "completed"]
+    stopped = [r for r in measured if r.end_reason == "stopped"]
+    if len(completed) < 3 or len(stopped) < 3:
+        return "actual"
+    matches = sum(abs(r._reported_s - r.active_s) <= tolerance(r) for r in completed) / len(completed)
+    short = sum(r._reported_s > r.active_s + tolerance(r) for r in stopped) / len(stopped)
+    return "planned" if matches >= 0.9 and short >= 0.8 else "actual"
+
+
+def _apply_duration_meaning(row: ParsedRow, meaning: DurationMeaning) -> None:
+    if not row.valid or row._reported_s is None or row.active_s is None:
+        return
+    if meaning == "planned":
+        row.planned_s = int(round(row._reported_s)) if row._reported_s > 0 else None
+        return
+    if not row._times_given:
+        return
+    elapsed = row.active_s + row.paused_s
+    tolerance = max(60.0, 0.05 * elapsed)
+    if abs(row._reported_s - row.active_s) > tolerance and abs(row._reported_s - elapsed) > tolerance:
+        row.warn(
+            "duration_mismatch",
+            f"reported duration {row._reported_s:.0f}s vs active {row.active_s}s from timestamps; "
+            "timestamps used",
+        )
 
 
 class SessionIndex:
-    """Finds sessions of the same type whose start (and active duration) match within a tolerance."""
+    """Finds the same session recorded twice: same type, start and active duration within a tolerance,
+    and overlapping in time. Overlap matters: two real sessions a few seconds apart (accidental taps)
+    have similar starts and durations but cannot overlap, because only one timer runs at a time."""
 
     def __init__(self, tolerance_s: int):
         self.tol = max(tolerance_s, 0)
         self.bucket = max(self.tol, 1)
-        self._items: dict[int, list[tuple[datetime, int | None, str, str]]] = {}
+        self._items: dict[int, list[tuple[datetime, datetime, int | None, str, str]]] = {}
 
-    def add(self, start: datetime, active_s: int | None, type_: str, label: str) -> None:
+    def add(self, start: datetime, end: datetime, active_s: int | None, type_: str, label: str) -> None:
         key = int(start.timestamp()) // self.bucket
-        self._items.setdefault(key, []).append((start, active_s, type_, label))
+        self._items.setdefault(key, []).append((start, end, active_s, type_, label))
 
-    def find(self, start: datetime, active_s: int | None, type_: str) -> str | None:
+    def find(self, start: datetime, end: datetime, active_s: int | None, type_: str) -> str | None:
         key = int(start.timestamp()) // self.bucket
+        slack = timedelta(seconds=1)
         for k in (key - 1, key, key + 1):
-            for other_start, other_active, other_type, label in self._items.get(k, ()):
+            for other_start, other_end, other_active, other_type, label in self._items.get(k, ()):
                 if other_type != type_ or abs((other_start - start).total_seconds()) > self.tol:
+                    continue
+                if start > other_end + slack or other_start > end + slack:
                     continue
                 if active_s is None or other_active is None or abs(active_s - other_active) <= self.tol:
                     return label
@@ -346,8 +477,8 @@ def _mark_in_file_duplicates(rows: list[ParsedRow], tol: int) -> None:
                 row.duplicate_of = f"row {seen_ids[row.external_id]} (same id)"
                 continue
             seen_ids[row.external_id] = row.row_number
-        match = index.find(row.start_utc, row.active_s, row.type)
+        match = index.find(row.start_utc, row.end_utc, row.active_s, row.type)
         if match:
             row.duplicate_of = f"{match} (same start and duration)"
             continue
-        index.add(row.start_utc, row.active_s, row.type, f"row {row.row_number}")
+        index.add(row.start_utc, row.end_utc, row.active_s, row.type, f"row {row.row_number}")

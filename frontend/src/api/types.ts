@@ -146,6 +146,8 @@ export interface ImportSummary {
   first_session: string | null;
   last_session: string | null;
   duration_unit: string;
+  duration_meaning: "actual" | "planned";
+  sections: string[];
   assumed_timezone_rows: number;
   columns_detected: Record<string, string>;
   warnings_by_code: Record<string, number>;
@@ -296,6 +298,7 @@ export interface UserSettings {
     long_pause_minutes: number;
     implausible_elapsed_hours: number;
     duplicate_tolerance_seconds: number;
+    short_session_seconds: number;
   };
   personalization: {
     min_samples: number;

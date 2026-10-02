@@ -5,6 +5,8 @@ import pytest
 from tests.conftest import ok
 
 FIXTURE = Path(__file__).parent / "fixtures" / "focus_messy.csv"
+# Synthetic file in FocusMeter's multi-section export format (no real user data).
+FOCUSMETER = Path(__file__).parent / "fixtures" / "focusmeter_export.csv"
 
 
 def upload(client, data: bytes, **params):
@@ -24,6 +26,7 @@ def test_dry_run_summary_on_messy_file(client):
     assert report["dry_run"] is True and report["batch_id"] is None
     assert (s["rows_read"], s["valid"], s["duplicates"], s["invalid"]) == (15, 9, 2, 4)
     assert s["duration_unit"] == "seconds (inferred from timestamps)"
+    assert s["duration_meaning"] == "actual" and s["sections"] == []
     assert s["work_sessions"] == 8 and s["rest_sessions"] == 1
     assert s["excluded_from_stats"] == 1 and s["flagged"] == 2
     assert s["total_focus_hours"] == pytest.approx(15030 / 3600, abs=0.01)
@@ -112,3 +115,59 @@ def test_bad_files_rejected(client):
     assert r.status_code == 422 and r.json()["error"]["details"]["errors"]
     assert upload(client, b"   ").status_code == 422
     assert upload(client, FIXTURE.read_bytes(), default_timezone="Not/AZone").status_code == 422
+
+
+def test_focusmeter_multi_section_export(client):
+    report = ok(upload(client, FOCUSMETER.read_bytes(), default_timezone="Asia/Tehran"))
+    s = report["summary"]
+    assert (s["rows_read"], s["valid"], s["duplicates"], s["invalid"]) == (11, 10, 0, 1)
+    assert {"sessions", "timeblocks", "events"} <= set(s["sections"])
+    # completed sessions match the duration column, stopped ones fall short: it is the planned target
+    assert s["duration_meaning"] == "planned"
+    assert "duration_mismatch" not in s["warnings_by_code"]
+    assert s["errors_by_code"] == {"unfinished_session": 1}  # epoch end time: still running at export
+    assert (s["work_sessions"], s["rest_sessions"]) == (7, 3)
+    assert (s["flagged"], s["excluded_from_stats"]) == (4, 2)
+    assert s["total_focus_hours"] == pytest.approx(13624 / 3600, abs=0.01)
+
+    ok(upload(client, FOCUSMETER.read_bytes(), default_timezone="Asia/Tehran", dry_run="false"))
+    by_ext = {x["external_id"]: x for x in ok(client.get("/api/sessions?limit=50"))["items"]}
+    assert set(by_ext) == {str(i) for i in range(1, 11)}
+
+    paused = by_ext["3"]
+    assert (paused["planned_duration_s"], paused["active_duration_s"], paused["pause_count"]) == (
+        1500,
+        1500,
+        1,
+    )
+    assert paused["tz_offset_minutes"] == 210 and paused["tags"] == ["Study"]
+
+    stopped = by_ext["4"]
+    assert (stopped["planned_duration_s"], stopped["active_duration_s"], stopped["end_reason"]) == (
+        3600,
+        720,
+        "stopped",
+    )
+
+    # The timer finished and sat idle for over two hours before being stopped: the app's timer
+    # blocks (1500 s + 3 s) are the active time, not end - start.
+    idle = by_ext["7"]
+    assert (idle["active_duration_s"], idle["paused_duration_s"], idle["pause_count"]) == (1503, 7497, 1)
+
+    # Paused overnight: a long elapsed time explained by pauses keeps its real focus time in the stats.
+    overnight = by_ext["8"]
+    assert set(overnight["quality_flags"]) == {"long_pause", "implausible_elapsed"}
+    assert overnight["exclude_from_stats"] is False and overnight["active_duration_s"] == 3600
+
+    # Accidental taps seconds apart: separate sessions (they do not overlap), flagged and excluded.
+    for tap in ("5", "6"):
+        assert by_ext[tap]["quality_flags"] == ["too_short"] and by_ext[tap]["exclude_from_stats"] is True
+
+    summary = ok(client.get("/api/analytics/summary"))
+    assert summary["session_count"] == 7 and summary["meta"]["excluded_count"] == 0
+
+
+def test_short_session_threshold_is_a_setting(client):
+    ok(client.put("/api/settings", json={"import_rules": {"short_session_seconds": 0}}))
+    report = ok(upload(client, FOCUSMETER.read_bytes(), default_timezone="Asia/Tehran"))
+    assert report["summary"]["excluded_from_stats"] == 0

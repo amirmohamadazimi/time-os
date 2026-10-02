@@ -51,6 +51,9 @@ class ImportRules(_Section):
     long_pause_minutes: int = Field(120, ge=5)
     implausible_elapsed_hours: int = Field(16, ge=2)
     duplicate_tolerance_seconds: int = Field(60, ge=0, le=3600)
+    short_session_seconds: int = Field(
+        60, ge=0, le=600, description="sessions with less active time are flagged too_short and excluded"
+    )
 
 
 class Personalization(_Section):

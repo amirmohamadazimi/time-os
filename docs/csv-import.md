@@ -32,6 +32,16 @@ end time or a duration is required.
 
 Encodings: UTF-8 (with or without BOM), UTF-16, then Latin-1. Delimiter is sniffed (`,` `;` tab `|`).
 
+### Multi-section exports (FocusMeter)
+
+Some apps write several tables into one file, each introduced by a `Name: <section>` line
+(FocusMeter: `sessions`, `events`, `tags`, `session-tags`, `timeblocks`, `flows`, then settings and
+export metadata). The importer splits the file, imports the `sessions` section, and uses
+`timeblocks` when present: each block is one uninterrupted run of the timer, so their sum is the
+exact active time and their count minus one is the number of pauses. This matters when a timer
+finished and sat waiting for the user, time that `end − start − paused` would count as focus
+(`active_from_timeblocks` warning). Other sections are ignored.
+
 ## Value parsing
 
 - **Timestamps**: ISO 8601 with `Z` or an offset; naive date-times (interpreted in the timezone
@@ -50,6 +60,13 @@ Encodings: UTF-8 (with or without BOM), UTF-16, then Latin-1. Delimiter is sniff
 
 ## Derivation and validation
 
+- **Duration column meaning** is decided once per file. Pomodoro-style apps export the *planned* timer
+  length: completed sessions match it and stopped sessions fall short of it. When at least 90 % of
+  completed rows match their measured active time and at least 80 % of stopped rows fall short, the
+  column is read as the plan and stored as `planned_duration_s`; otherwise it is time worked. The
+  preview shows which (`duration_meaning`).
+- An end time of `1970-01-01…` (or `0`) means the session was still running at export: the row is
+  invalid with `unfinished_session` and can be imported from a later export.
 - Missing end → `start + duration + paused` (`end_time_derived`). Missing start → `end − duration − paused`.
 - Missing paused time with a duration clearly shorter than elapsed → paused inferred (`paused_inferred`).
 - **Timestamps win** over a reported duration that disagrees by more than max(60 s, 5 %)
@@ -64,10 +81,11 @@ Settings → Import quality rules.
 
 | Flag | Default rule | Excluded from analytics |
 |---|---|---|
-| `long_active` | active > 240 min | no |
-| `long_pause` | paused > 120 min | no |
-| `implausible_elapsed` | elapsed > 16 h (for example, a timer left running overnight) | yes |
+| `too_short` | active < 60 s (accidental taps) | yes |
 | `zero_length` | start = end | yes |
+| `long_active` | active > 240 min | only together with `implausible_elapsed` |
+| `long_pause` | paused > 120 min | no |
+| `implausible_elapsed` | elapsed > 16 h | only together with `long_active` (a timer left running). A long elapsed time explained by pauses keeps its focus time. |
 
 Exclusion can be toggled per session on the Sessions page.
 
@@ -78,7 +96,8 @@ A row is a duplicate when:
 - its `id` was already imported (a session you deleted individually still counts; rolling back a whole
   batch frees its ids), or
 - another row in the same file, or an existing session of any source, has the same type, a start
-  within the tolerance (default 60 s) and the same active duration within the tolerance.
+  within the tolerance (default 60 s), the same active duration within the tolerance, **and overlaps
+  it in time**. Two real sessions cannot overlap, so accidental taps a few seconds apart stay separate.
 
 Re-importing the same file is therefore safe: every row comes back as a duplicate. The preview also
 says when the exact file (by SHA-256) was imported before.

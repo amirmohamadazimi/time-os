@@ -10,7 +10,14 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.errors import ConflictError, NotFoundError, ValidationFailed
-from app.importer.focus_csv import DurationUnit, ImportOptions, ParsedRow, SessionIndex, parse_file
+from app.importer.focus_csv import (
+    DurationUnit,
+    ImportOptions,
+    ParsedRow,
+    ParseResult,
+    SessionIndex,
+    parse_file,
+)
 from app.models import FocusSession, ImportBatch, ImportRecord
 from app.models.enums import (
     ActionSource,
@@ -60,12 +67,12 @@ def _mark_existing_duplicates(db: Session, rows: list[ParsedRow], tolerance_s: i
             FocusSession.start_time.between(lo, hi),
         )
     ):
-        index.add(s.start_time, s.active_duration_s, s.type.value, f"existing session {s.id}")
+        index.add(s.start_time, s.end_time, s.active_duration_s, s.type.value, f"existing session {s.id}")
     for row in candidates:
         if row.external_id and row.external_id in known_ids:
             row.duplicate_of = "previously imported (same id)"
             continue
-        match = index.find(row.start_utc, row.active_s, row.type)
+        match = index.find(row.start_utc, row.end_utc, row.active_s, row.type)
         if match:
             row.duplicate_of = f"{match} (same start and duration)"
 
@@ -74,7 +81,8 @@ def _code(message: str) -> str:
     return message.split(":", 1)[0]
 
 
-def _summary(rows: list[ParsedRow], unit: str, columns: dict[str, str], previously: bool) -> ImportSummary:
+def _summary(parsed: ParseResult, previously: bool) -> ImportSummary:
+    rows = parsed.rows
     new = [r for r in rows if _status(r) == ImportRecordStatus.imported]
     counted = [r for r in new if not r.exclude_from_stats]
     work = [r.active_s for r in counted if r.type == "work"]
@@ -97,9 +105,11 @@ def _summary(rows: list[ParsedRow], unit: str, columns: dict[str, str], previous
         median_work_session_minutes=round(statistics.median(work) / 60, 1) if work else None,
         first_session=min(starts) if starts else None,
         last_session=max(starts) if starts else None,
-        duration_unit=unit,
+        duration_unit=parsed.duration_unit,
+        duration_meaning=parsed.duration_meaning,
+        sections=parsed.sections,
         assumed_timezone_rows=warnings.get("assumed_timezone", 0),
-        columns_detected=columns,
+        columns_detected=parsed.columns,
         warnings_by_code=dict(warnings),
         errors_by_code=dict(errors),
         file_previously_imported=previously,
@@ -147,6 +157,7 @@ def import_focus_sessions(
         long_pause_minutes=rules.long_pause_minutes,
         implausible_elapsed_hours=rules.implausible_elapsed_hours,
         duplicate_tolerance_seconds=rules.duplicate_tolerance_seconds,
+        short_session_seconds=rules.short_session_seconds,
     )
     parsed = parse_file(data, options)
     if parsed.file_errors:
@@ -164,7 +175,7 @@ def import_focus_sessions(
         or 0
     ) > 0
     _mark_existing_duplicates(db, parsed.rows, options.duplicate_tolerance_seconds)
-    summary = _summary(parsed.rows, parsed.duration_unit, parsed.columns, previously)
+    summary = _summary(parsed, previously)
     report = ImportReport(batch_id=None, dry_run=dry_run, summary=summary, issues=_issues(parsed.rows))
     if dry_run:
         return report
@@ -191,8 +202,10 @@ def import_focus_sessions(
                 start_time=row.start_utc,
                 end_time=row.end_utc,
                 tz_offset_minutes=row.tz_offset_minutes,
+                planned_duration_s=row.planned_s,
                 active_duration_s=row.active_s,
                 paused_duration_s=row.paused_s,
+                pause_count=row.pause_count,
                 end_reason=EndReason(row.end_reason),
                 notes=row.notes,
                 tags=row.tags,
