@@ -14,7 +14,18 @@ from starlette.convertors import PathConvertor, register_url_convertor
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app import __version__
-from app.api import analytics, dashboard, focus, health, imports, projects, sessions, settings, tasks
+from app.api import (
+    analytics,
+    calendar,
+    dashboard,
+    focus,
+    health,
+    imports,
+    projects,
+    sessions,
+    settings,
+    tasks,
+)
 from app.api.deps import require_token
 from app.config import Config, get_config
 from app.db import make_engine, make_session_factory
@@ -98,7 +109,7 @@ def create_app(config: Config | None = None, engine: Engine | None = None) -> Fa
 
     app.include_router(health.router, prefix="/api")
     protected = [Depends(require_token)]
-    for module in (dashboard, projects, tasks, focus, sessions, imports, analytics, settings):
+    for module in (dashboard, projects, tasks, focus, sessions, imports, analytics, settings, calendar):
         app.include_router(module.router, prefix="/api", dependencies=protected)
     _serve_frontend(app, Path(config.static_dir) if config.static_dir else FRONTEND_DIST)
     return app

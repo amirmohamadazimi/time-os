@@ -77,28 +77,30 @@ updated_at`. Moves are recorded in `audit_log`, which is also the source for
 ## Available time (concept B)
 
 ### `calendar_accounts` (P3)
-`id, provider ('google'), email, scopes, refresh_token_encrypted, access_token_encrypted,
-token_expiry, status (connected | expired | revoked), created_at, updated_at`.
+Implemented: `id, provider (ical | google), display_name, status (connected | error),
+feed_url_encrypted, feed_url_sha256 (indexed, detects duplicates), feed_host, created_at, updated_at`.
+OAuth adds `email, scopes, refresh_token_encrypted, access_token_encrypted, token_expiry`.
 
 ### `calendars` (P3)
-`id, account_id, provider_calendar_id, summary, timezone, selected bool, sync_token,
-last_synced_at, last_error`.
+`id, account_id (FK, cascade), provider_calendar_id ('feed' for iCal), summary, timezone, color,
+selected bool, all_day_busy bool, sync_token (iCal: HTTP ETag), http_last_modified, last_synced_at,
+last_error, created_at, updated_at`; unique `(account_id, provider_calendar_id)`.
 
 ### `calendar_events` (P3)
 | Column | Notes |
 |---|---|
 | id | uuid PK |
-| calendar_id | FK calendars |
-| provider_event_id | Google event id; unique with `calendar_id` |
+| calendar_id | FK calendars, cascade |
+| provider_event_id | UID (or `UID_<original start>` for recurring instances); unique with `calendar_id` |
 | recurring_event_id | master id for expanded recurring instances |
 | title, location | |
 | start_time, end_time | timestamptz; all-day events stored with `all_day = true` |
 | busy | bool from `transparency` (opaque = busy) |
 | status | `confirmed \| tentative \| cancelled` (cancelled kept as tombstone) |
 | origin | `USER_CREATED_EVENT \| APP_GENERATED_EVENT` |
-| schedule_block_id | FK schedule_blocks null (for app-generated blocks) |
-| etag, remote_updated_at, synced_at | sync bookkeeping |
-| raw | json, original payload |
+| schedule_block_id | FK schedule_blocks null (P4, for app-generated blocks; not created yet) |
+| etag, remote_updated_at, synced_at | sync bookkeeping; for iCal, `etag` is a fingerprint of the stored fields |
+| raw | json: event timezone, transparency, declined flag (no descriptions or attendees) |
 
 ## Actual behaviour (concept C)
 

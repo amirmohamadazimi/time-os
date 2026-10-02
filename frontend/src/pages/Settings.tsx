@@ -126,7 +126,7 @@ export function SettingsPage() {
               { value: "read_only", label: "Read only" },
               { value: "suggest", label: "Suggest focus blocks" },
               { value: "auto_create", label: "Create focus blocks automatically" },
-            ]} description="Events you created yourself are never changed automatically." />
+            ]} description="Events you created yourself are never changed automatically. Calendars connected by iCal link are read-only." />
           </SimpleGrid>
         </Section>
         <Section title="Scheduler" description="Used when building and repairing daily plans.">

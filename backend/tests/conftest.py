@@ -12,6 +12,9 @@ from app.config import Config
 from app.db import Base, make_session_factory
 from app.main import create_app
 
+# Stored secrets (calendar links) are encrypted with this key instead of a generated key file.
+os.environ.setdefault("TIMEOS_SECRET_KEY", "test-only-secret-key")
+
 # Set TIMEOS_TEST_DATABASE_URL=postgresql+psycopg://... to run the suite against PostgreSQL.
 TEST_DB_URL = os.environ.get("TIMEOS_TEST_DATABASE_URL")
 

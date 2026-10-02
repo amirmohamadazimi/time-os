@@ -5,7 +5,9 @@ import { Link } from "react-router-dom";
 import { endpoints } from "../api/endpoints";
 import type { Task } from "../api/types";
 import { PriorityBadge, ProvenanceBadges } from "../components/TaskBadges";
+import { FreeTimeSummary } from "../components/FreeTimeSummary";
 import { TimerPanel } from "../components/TimerPanel";
+import { useCalendarAutoSync } from "../hooks/useCalendar";
 import { useAppMutation, useCurrentSession } from "../hooks/useFocus";
 import { formatDate, formatDateTime, formatMinutes } from "../lib/format";
 
@@ -33,6 +35,24 @@ function TaskRow({ task, canStart }: { task: Task; canStart: boolean }) {
         </Button>
       )}
     </Group>
+  );
+}
+
+/** Shown once a calendar is connected: today's free time inside working hours. */
+function TodayCalendar({ date }: { date: string }) {
+  const accounts = useQuery({ queryKey: ["calendar-accounts"], queryFn: endpoints.calendarAccounts });
+  const connected = (accounts.data ?? []).length > 0;
+  useCalendarAutoSync(connected);
+  const free = useQuery({ queryKey: ["calendar-free", date], queryFn: () => endpoints.freeTime(date), enabled: connected });
+  if (!connected || !free.data) return null;
+  return (
+    <Paper withBorder p="md">
+      <Group justify="space-between">
+        <Title order={5}>Calendar</Title>
+        <Link to="/calendar"><Text size="sm">Open</Text></Link>
+      </Group>
+      <FreeTimeSummary free={free.data} />
+    </Paper>
   );
 }
 
@@ -94,6 +114,7 @@ export function DashboardPage() {
         </Grid.Col>
         <Grid.Col span={{ base: 12, md: 5 }}>
           <Stack>
+            <TodayCalendar date={d.date} />
             <Paper withBorder p="md">
               <Title order={5}>Due today</Title>
               {d.due_today.length === 0 ? <Text c="dimmed" size="sm">Nothing due today.</Text>

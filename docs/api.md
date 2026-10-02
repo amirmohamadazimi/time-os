@@ -127,10 +127,24 @@ priority, then importance.
 | PUT | `/api/settings` | `UserSettings` (partial merge) | `UserSettings` |
 | GET | `/api/audit` | `?entity_type&entity_id&action&limit=100` | `AuditEntry[]` |
 
+## Calendar
+Read-only iCal feeds ([google-calendar.md](google-calendar.md)). The feed link is write-only: no
+response ever contains it.
+
+| Method | Path | Body / query | Response |
+|---|---|---|---|
+| GET | `/api/calendar/accounts` | | `CalendarAccount[]` (with `calendars`, `feed_host`, never the link) |
+| POST | `/api/calendar/ical` | `{url, name?, all_day_busy?}` | `201 CalendarAccount`; fetched and synced first, `422 calendar_feed_error` if the link fails, `409` if already connected |
+| DELETE | `/api/calendar/accounts/{id}` | | `204`; removes the link, calendars and cached events (audited) |
+| PATCH | `/api/calendar/calendars/{id}` | `{summary?, color?, selected?, all_day_busy?}` | `Calendar` |
+| POST | `/api/calendar/sync` | `?calendar_id&max_age_s&force` | `SyncResult[]` (`synced \| not_modified \| skipped \| error` with counts) |
+| GET | `/api/calendar/events` | `?from&to` (local dates, ≤ 366 days), `include_cancelled` | `CalendarEvent[]` from selected calendars |
+| GET | `/api/calendar/free-time` | `?date` | `FreeTime`: working hours minus busy events, merged busy spans with titles, oldest `synced_at` |
+
 ## Planned endpoints (later phases)
 
 | Phase | Endpoints |
 |---|---|
-| 3 Calendar | `GET /api/calendar/oauth/start`, `GET /api/calendar/oauth/callback`, `POST /api/calendar/sync`, `GET /api/calendar/events?from&to`, `GET /api/calendar/free-time?date`, `GET/PATCH /api/calendar/calendars` |
+| 3 Calendar (OAuth) | `GET /api/calendar/oauth/start`, `GET /api/calendar/oauth/callback` |
 | 4 Scheduler | `POST /api/schedules/generate {date}`, `GET /api/schedules/{date}`, `POST /api/schedules/{id}/accept\|reject`, `PATCH /api/schedule-blocks/{id}`, `POST /api/schedules/{id}/reschedule {event}`, `GET /api/schedule-blocks/{id}/explain` |
 | 5 Claude | `POST /api/chat` (SSE stream of text + tool-call events), `GET /api/chat/tools`, `GET /api/reviews/daily?date`, `GET /api/reviews/weekly?week` |

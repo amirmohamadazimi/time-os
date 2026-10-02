@@ -23,8 +23,12 @@ class Config(BaseSettings):
     max_upload_mb: int = 20
     static_dir: str | None = None  # built frontend to serve; defaults to ../frontend/dist when present
 
-    # Phase 3 / 5 (unused until those phases land)
+    # Encrypts stored secrets (calendar links, later OAuth tokens). When unset, a random key is created
+    # in secret_key_file on first use; hosts without a persistent disk must set it.
     secret_key: str | None = None
+    secret_key_file: str = "./data/secret.key"
+
+    # Phase 5 (unused until it lands)
     ai_model: str = "claude-opus-5-5"
 
     @field_validator("database_url")

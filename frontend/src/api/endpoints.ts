@@ -1,6 +1,6 @@
 import { api } from "./client";
 import type {
-  AnalyticsSummary, EstimationRow, FocusSession, HourRow, ImportBatch, ImportReport, LiveSession, Meta, Page,
+  AnalyticsSummary, CalendarAccount, CalendarEvent, CalendarInfo, CalendarSyncResult, EstimationRow, FreeTime, FocusSession, HourRow, ImportBatch, ImportReport, LiveSession, Meta, Page,
   Pattern, Project, ProjectRow, ProjectStats, TagRow, Task, TaskInput, TaskStatus, Timeseries, TodayDashboard,
   UserSettings, WeekdayRow,
 } from "./types";
@@ -15,6 +15,17 @@ export interface Range {
 
 export const endpoints = {
   dashboard: () => api.get<TodayDashboard>("/dashboard/today"),
+
+  calendarAccounts: () => api.get<CalendarAccount[]>("/calendar/accounts"),
+  connectIcal: (body: { url: string; name?: string | null; all_day_busy?: boolean }) =>
+    api.post<CalendarAccount>("/calendar/ical", body),
+  disconnectCalendar: (accountId: string) => api.del(`/calendar/accounts/${accountId}`),
+  updateCalendar: (id: string, body: Partial<Pick<CalendarInfo, "summary" | "color" | "selected" | "all_day_busy">>) =>
+    api.patch<CalendarInfo>(`/calendar/calendars/${id}`, body),
+  syncCalendars: (q: { max_age_s?: number; force?: boolean; calendar_id?: string } = {}) =>
+    api.post<CalendarSyncResult[]>("/calendar/sync", undefined, q),
+  calendarEvents: (from: string, to: string) => api.get<CalendarEvent[]>("/calendar/events", { from, to }),
+  freeTime: (date: string) => api.get<FreeTime>("/calendar/free-time", { date }),
 
   projects: (status?: "active" | "archived") => api.get<Project[]>("/projects", { status }),
   createProject: (body: Partial<Project>) => api.post<Project>("/projects", body),

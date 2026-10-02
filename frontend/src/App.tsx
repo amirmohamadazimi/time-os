@@ -1,8 +1,8 @@
 import { AppShell, Badge, Burger, Center, Group, Loader, NavLink, Text, Title } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {
-  IconChartBar, IconClock, IconFileImport, IconFolders, IconHistory, IconLayoutDashboard, IconListCheck,
-  IconSettings,
+  IconCalendar, IconChartBar, IconClock, IconFileImport, IconFolders, IconHistory, IconLayoutDashboard,
+  IconListCheck, IconSettings,
 } from "@tabler/icons-react";
 import { useQuery } from "@tanstack/react-query";
 import { NavLink as RouterLink, Route, Routes, useLocation } from "react-router-dom";
@@ -12,6 +12,7 @@ import { TokenGate } from "./components/TokenGate";
 import { useCurrentSession } from "./hooks/useFocus";
 import { formatClock } from "./lib/format";
 import { AnalyticsPage } from "./pages/Analytics";
+import { CalendarPage } from "./pages/Calendar";
 import { DashboardPage } from "./pages/Dashboard";
 import { FocusPage } from "./pages/Focus";
 import { ImportPage } from "./pages/Import";
@@ -22,6 +23,7 @@ import { TasksPage } from "./pages/Tasks";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: IconLayoutDashboard },
+  { to: "/calendar", label: "Calendar", icon: IconCalendar },
   { to: "/tasks", label: "Tasks", icon: IconListCheck },
   { to: "/projects", label: "Projects", icon: IconFolders },
   { to: "/focus", label: "Focus", icon: IconClock },
@@ -74,6 +76,7 @@ function Shell() {
       <AppShell.Main>
         <Routes>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/tasks" element={<TasksPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/focus" element={<FocusPage />} />
